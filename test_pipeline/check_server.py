@@ -1,4 +1,3 @@
-
 from sentence_transformers import SentenceTransformer
 from Qdrant.QdrantClient import QdrantClient
 
