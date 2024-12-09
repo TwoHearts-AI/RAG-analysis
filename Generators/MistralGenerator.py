@@ -1,6 +1,6 @@
 from .generator import GeneratorABC
 from mistralai import Mistral
-from .promts.promt import eneral_prompt
+from .promts.promt import general_prompt
 import os
 class MistralLLM(GeneratorABC):
     def __init__(self):
@@ -10,7 +10,7 @@ class MistralLLM(GeneratorABC):
 
     def __call__(self, query):
         query = [
-            {"role": "system", "content": eneral_prompt},
+            {"role": "system", "content": general_prompt},
             {"role": "user", "content": query}
         ]
 
