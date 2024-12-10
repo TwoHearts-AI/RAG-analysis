@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.pyc
+.git/
+.gitignore
+README.md
+.pytest_cache/
+qdrant_storage/
+.idea/
+.vscode/
