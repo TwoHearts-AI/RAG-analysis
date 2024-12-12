@@ -7,6 +7,8 @@ from typing import List, Dict, Optional
 import math
 from qdrant_client.models import ScoredPoint
 import os
+from dotenv import load_dotenv
+load_dotenv()
 
 class QdrantClient:
     def __init__(self):

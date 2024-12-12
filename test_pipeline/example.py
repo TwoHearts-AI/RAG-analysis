@@ -29,8 +29,6 @@ def rag_pipeline(rag_search_prompts, query, retriever, llm):
     for search in rag_search_prompts:
         relevant_context += retriever.search_relevant_context(search)
 
-    print("Релевантный контекст:", query)
-
     inference_prompt = f"Контекст:\n{relevant_context}\n\nВопрос:\n{query}\n\nОтвет:"
     answer = llm(inference_prompt)
     return answer
@@ -41,4 +39,4 @@ query = llm_inference_prompts[0]
 
 response = rag_pipeline(rag_search_prompts, query, retriever, llm)
 
-print(query)
+print(response)
