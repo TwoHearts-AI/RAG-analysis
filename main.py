@@ -1,112 +1,115 @@
-from fastapi import FastAPI, HTTPException
-from qdrant_client import QdrantClient
-from pydantic import BaseModel, Field, conint
-from typing import List, Optional
-import os
-from loguru import logger
-from schemas import SimilarDocsRequest, SimilarDocsResponse, RAGResponse, RAGRequest, CollectionStats, CollectionStatsRequest
+from fastapi import FastAPI, UploadFile, File, HTTPException
+from sentence_transformers import SentenceTransformer
+from config import CONFIG
+from generators.MistralGenerator import mistral
+from qdrant.QdrantClient import qdrant_client
+from chunker.Text_chunker import chunker
+from schemas import UploadRequest, UploadResponse, SearchRequest, SearchResponse, RAGRequest, RAGResponse, CollectionListResponse
 
 app = FastAPI()
-
-@app.on_event("startup")
-async def startup_event():
-    global qdrant_client
-    qdrant_client = QdrantClient(
-        host=os.getenv("QDRANT_HOST", "localhost"),
-        port=int(os.getenv("QDRANT_PORT", 6333))
-    )
+encoder = SentenceTransformer(CONFIG.EMBEDDING_MODEL)
 
 
-@app.post("/similar-documents", response_model=SimilarDocsResponse)
-async def get_similar_documents(request: SimilarDocsRequest):
-    """
-    Retrieve similar documents from Qdrant without LLM processing
-    """
+@app.post("/upload", response_model=UploadResponse)
+async def upload_file(
+    file: UploadFile = File(...),
+    request: UploadRequest
+):
     try:
-        # Здесь будет логика получения эмбеддингов для query_text
-        # и поиск похожих документов в Qdrant
-        
-        search_result = qdrant_client.search(
+        content = await file.read()
+        text = content.decode()
+        chunks = chunker.split_text(text)
+        embeddings = encoder.encode(chunks)
+
+        qdrant_client.ensure_collection_exists(
             collection_name=request.collection_name,
-            query_vector=[0.1] * 1536,  # Замените на реальные эмбеддинги
-            limit=request.limit,
-            score_threshold=request.score_threshold
+            vector_size=len(embeddings[0])
         )
-        
-        documents = [
-            DocumentResponse(
-                text=hit.payload.get("text", ""),
-                metadata=hit.payload.get("metadata", {}),
-                score=hit.score
-            ) for hit in search_result
+
+        points = [
+            {
+                "id": i,
+                "vector": embedding.tolist(),
+                "payload": {"text": chunk}
+            }
+            for i, (chunk, embedding) in enumerate(zip(chunks, embeddings))
         ]
-        
-        return SimilarDocsResponse(
-            documents=documents,
-            total_found=len(documents)
+
+        qdrant_client.save_chunks(
+            collection_name=request.collection_name,
+            chunks=chunks,
+            embeddings=embeddings,
+            points=points
         )
-        
+
+        return UploadResponse(
+            chunks_count=len(chunks),
+            collection_name=request.collection_name
+        )
+
     except Exception as e:
-        logger.error(f"Error in similar-documents endpoint: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/rag-inference", response_model=RAGResponse)
-async def run_rag_inference(request: RAGRequest):
-    """
-    Run full RAG pipeline including LLM inference
-    """
+
+@app.post("/search", response_model=SearchResponse)
+async def search_documents(request: SearchRequest):
     try:
-        # 1. Получение эмбеддингов для query_text
-        # 2. Поиск похожих документов в Qdrant
-        # 3. Подготовка промпта с найденными документами
-        # 4. Вызов LLM
-        # Это заглушка, нужно реализовать реальную логику
-        
-        similar_docs = qdrant_client.search(
+        query_vector = encoder.encode(request.text).tolist()
+        results = qdrant_client.search_by_vector(
             collection_name=request.collection_name,
-            query_vector=[0.1] * 1536,  # Замените на реальные эмбеддинги
+            query_vector=query_vector,
             limit=request.limit
         )
-        
-        documents = [
-            DocumentResponse(
-                text=hit.payload.get("text", ""),
-                metadata=hit.payload.get("metadata", {}),
-                score=hit.score
-            ) for hit in similar_docs
-        ]
-        
-        # Здесь будет вызов LLM
-        
-        return RAGResponse(
-            answer="This is a placeholder answer from LLM",
-            used_documents=documents,
-            total_tokens=100  # Замените на реальное количество токенов
+
+        return SearchResponse(
+            results=[{
+                "text": hit.payload["text"],
+                "score": hit.score
+            } for hit in results]
         )
-        
     except Exception as e:
-        logger.error(f"Error in rag-inference endpoint: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-    """
-    Get detailed statistics about a specific collection
-    """
+
+@app.post("/rag", response_model=RAGResponse)
+async def rag_inference(request: RAGRequest):
     try:
-        # Получение информации о коллекции
-        collection_info = qdrant_client.get_collection(request.collection_name)
-        
-        # Получение количества точек в коллекции
-        points_count = qdrant_client.count(
-            collection_name=request.collection_name
-        ).count
-        
-        return CollectionStats(
-            total_documents=points_count,
-            vectors_size=collection_info.config.params.vectors.size,
+        query_vector = encoder.encode(request.text).tolist()
+        results = qdrant_client.search_by_vector(
             collection_name=request.collection_name,
-            metadata_schema=collection_info.payload_schema
+            query_vector=query_vector,
+            limit=request.limit
         )
-        
+
+        context = "\n\n".join([hit.payload["text"] for hit in results])
+        response = mistral.generate(
+            system_prompt="You are a helpful assistant. Answer based on the provided context.",
+            user_query=request.text,
+            context=context
+        )
+
+        return RAGResponse(
+            answer=response,
+            sources=[{
+                "text": hit.payload["text"],
+                "score": hit.score
+            } for hit in results]
+        )
     except Exception as e:
-        logger.error(f"Error in collection-stats endpoint: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/collections", response_model=CollectionListResponse)
+async def list_collections():
+    try:
+        collections = qdrant_client.client.get_collections()
+        stats = []
+        for collection in collections.collections:
+            count = qdrant_client.client.get_collection(collection.name).vectors_count
+            stats.append({
+                "name": collection.name,
+                "vectors_count": count
+            })
+        return CollectionListResponse(collections=stats)
+    except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

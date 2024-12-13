@@ -106,3 +106,6 @@ class QdrantClient:
         )
 
         return results
+
+
+qdrant_client = QdrantClient()

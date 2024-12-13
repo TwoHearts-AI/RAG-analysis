@@ -1,25 +1,30 @@
-from .generator import GeneratorABC
 from mistralai import Mistral
-from .promts.promt import general_prompt
-import os
-from dotenv import load_dotenv
-load_dotenv()
+from mistralai import Mistral
+from config import CONFIG
 
-class MistralLLM(GeneratorABC):
+
+class MistralGenerator:
     def __init__(self):
-        load_dotenv()
-        self.api_key = os.getenv('MISTRAL_SECRET')
-        self.model_name = os.getenv('MISTRAL_LARGE_LATEST')
-        self.client = Mistral(api_key=self.api_key)
+        self.client = Mistral(api_key=CONFIG.MISTRAL_API_KEY)
+        self.model = CONFIG.MISTRAL_MODEL
 
-    def __call__(self, query):
-        query = [
-            {"role": "system", "content": general_prompt},
-            {"role": "user", "content": query}
+    def generate(self, system_prompt: str, user_query: str, context: str = None) -> str:
+        messages = [
+            {"role": "system", "content": system_prompt}
         ]
 
+        if context:
+            prompt = f"Context:\n{context}\n\nQuestion: {user_query}"
+        else:
+            prompt = user_query
+
+        messages.append({"role": "user", "content": prompt})
+
         response = self.client.chat.complete(
-            model=self.model_name,
-            messages=query,
+            model=self.model,
+            messages=messages
         )
         return response.choices[0].message.content
+
+
+mistral = MistralGenerator()

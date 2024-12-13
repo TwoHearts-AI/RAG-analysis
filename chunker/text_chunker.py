@@ -41,3 +41,5 @@ class TextChunker:
             list: Список чанков текста.
         """
         return self.splitter.split_text(text)
+    
+chunker = TextChunker()

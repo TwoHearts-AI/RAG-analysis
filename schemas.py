@@ -1,33 +1,52 @@
-from pydantic import BaseModel, Field, conint
-from typing import List, Optional
+from pydantic import BaseModel, Field
+from typing import List
 
-class SimilarDocsRequest(BaseModel):
-    collection_name: str = Field(..., description="Name of the Qdrant collection")
-    query_text: str = Field(..., description="Text to search similar documents for")
-    limit: conint(gt=0, le=20) = Field(5, description="Number of documents to return")
-    score_threshold: Optional[float] = Field(0.3, description="Minimum similarity score threshold")
 
-class DocumentResponse(BaseModel):
+class SearchResult(BaseModel):
     text: str
-    metadata: dict
     score: float
 
-class SimilarDocsResponse(BaseModel):
-    documents: List[DocumentResponse]
+
+class UploadResponse(BaseModel):
+    chunks_count: int
+
+
+class SearchRequest(BaseModel):
+    text: str
+    collection_name: str = Field(default="default_collection")
+    limit: int = Field(default=5, ge=1, le=20)
+
+
+class SearchResponse(BaseModel):
+    results: List[SearchResult]
+
 
 class RAGRequest(BaseModel):
-    collection_name: str = Field(..., description="Name of the Qdrant collection")
-    query_text: str = Field(..., description="User query for RAG processing")
-    limit: conint(gt=0, le=10) = Field(3, description="Number of documents to retrieve")
+    text: str
+    collection_name: str = Field(default="default_collection")
+    limit: int = Field(default=3, ge=1, le=10)
+
 
 class RAGResponse(BaseModel):
     answer: str
-    used_documents: List[DocumentResponse]
+    sources: List[SearchResult]
 
-class CollectionStatsRequest(BaseModel):
-    collection_name: str = Field(..., description="Name of the Qdrant collection")
 
 class CollectionStats(BaseModel):
-    total_documents: int
-    vectors_size: int
+    name: str
+    vectors_count: int
+
+
+class CollectionListResponse(BaseModel):
+    collections: List[CollectionStats]
+
+class UploadRequest(BaseModel):
+    collection_name: str = Field(
+        default="default_collection",
+        description="Name of the collection to upload to"
+    )
+
+class UploadResponse(BaseModel):
+    chunks_count: int
     collection_name: str
+    message: str = Field(default="Upload successful")
