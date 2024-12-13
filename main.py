@@ -4,8 +4,7 @@ from config import CONFIG
 from generators.MistralGenerator import mistral
 from qdrant.QdrantClient import qdrant_client
 from chunker.Text_chunker import chunker
-from schemas import SearchResult, UploadRequest, UploadResponse, SearchRequest, SearchResponse, RAGRequest, RAGResponse, CollectionListResponse
-import uuid
+from schemas import SearchResult, UploadResponse, SearchRequest, SearchResponse, RAGRequest, RAGResponse, CollectionListResponse
 app = FastAPI()
 encoder = SentenceTransformer(CONFIG.EMBEDDING_MODEL)
 
@@ -27,9 +26,6 @@ async def upload_file(
         chunks = chunker.split_text(text)
         embeddings = encoder.encode(chunks)
 
-        document_id = uuid.uuid4()
-        chat_id = uuid.uuid4()
-
         qdrant_client.ensure_collection_exists(
             collection_name=collection_name,
             vector_size=len(embeddings[0])
@@ -37,17 +33,15 @@ async def upload_file(
 
         # Call save_chunks with correct arguments
         qdrant_client.save_chunks(
-            collection_name=request.collection_name,
+            collection_name=collection_name,
             chunks=chunks,
             vectors=embeddings,  # renamed from embeddings to vectors
-            document_id=document_id,
-            chat_id=chat_id,
             filename=file.filename or 'unnamed_file'
         )
 
         return UploadResponse(
             chunks_count=len(chunks),
-            collection_name=request.collection_name,
+            collection_name=collection_name,
             message="Upload successful"
         )
 
