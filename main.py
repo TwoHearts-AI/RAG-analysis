@@ -1,19 +1,25 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, status
 from sentence_transformers import SentenceTransformer
 from config import CONFIG
 from generators.MistralGenerator import mistral
 from qdrant.QdrantClient import qdrant_client
 from chunker.Text_chunker import chunker
-from schemas import UploadRequest, UploadResponse, SearchRequest, SearchResponse, RAGRequest, RAGResponse, CollectionListResponse
-
+from schemas import SearchResult, UploadRequest, UploadResponse, SearchRequest, SearchResponse, RAGRequest, RAGResponse, CollectionListResponse
+import uuid
 app = FastAPI()
 encoder = SentenceTransformer(CONFIG.EMBEDDING_MODEL)
 
 
-@app.post("/upload", response_model=UploadResponse)
+# main.py
+@app.post(
+    "/upload/{collection_name}",
+    response_model=UploadResponse,
+    status_code=status.HTTP_201_CREATED
+)
 async def upload_file(
+    collection_name: str,
     file: UploadFile = File(...),
-    request: UploadRequest
+
 ):
     try:
         content = await file.read()
@@ -21,30 +27,28 @@ async def upload_file(
         chunks = chunker.split_text(text)
         embeddings = encoder.encode(chunks)
 
+        document_id = uuid.uuid4()
+        chat_id = uuid.uuid4()
+
         qdrant_client.ensure_collection_exists(
-            collection_name=request.collection_name,
+            collection_name=collection_name,
             vector_size=len(embeddings[0])
         )
 
-        points = [
-            {
-                "id": i,
-                "vector": embedding.tolist(),
-                "payload": {"text": chunk}
-            }
-            for i, (chunk, embedding) in enumerate(zip(chunks, embeddings))
-        ]
-
+        # Call save_chunks with correct arguments
         qdrant_client.save_chunks(
             collection_name=request.collection_name,
             chunks=chunks,
-            embeddings=embeddings,
-            points=points
+            vectors=embeddings,  # renamed from embeddings to vectors
+            document_id=document_id,
+            chat_id=chat_id,
+            filename=file.filename or 'unnamed_file'
         )
 
         return UploadResponse(
             chunks_count=len(chunks),
-            collection_name=request.collection_name
+            collection_name=request.collection_name,
+            message="Upload successful"
         )
 
     except Exception as e:
@@ -61,17 +65,20 @@ async def search_documents(request: SearchRequest):
             limit=request.limit
         )
 
-        return SearchResponse(
-            results=[{
-                "text": hit.payload["text"],
-                "score": hit.score
-            } for hit in results]
-        )
+        search_results = [
+            SearchResult(
+                text=res.payload.get("content", ""),
+                score=res.score
+            ) for res in results
+        ]
+
+        return SearchResponse(results=search_results)
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/rag", response_model=RAGResponse)
+@app.post("/rag-inference", response_model=RAGResponse)
 async def rag_inference(request: RAGRequest):
     try:
         query_vector = encoder.encode(request.text).tolist()
@@ -81,19 +88,23 @@ async def rag_inference(request: RAGRequest):
             limit=request.limit
         )
 
-        context = "\n\n".join([hit.payload["text"] for hit in results])
+        context = "\n\n".join([res.payload.get("content", "") for res in results])
         response = mistral.generate(
             system_prompt="You are a helpful assistant. Answer based on the provided context.",
             user_query=request.text,
             context=context
         )
 
+        search_results = [
+            SearchResult(
+                text=res.payload.get("content", ""),
+                score=res.score
+            ) for res in results
+        ]
+
         return RAGResponse(
             answer=response,
-            sources=[{
-                "text": hit.payload["text"],
-                "score": hit.score
-            } for hit in results]
+            sources=search_results
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

@@ -1,14 +1,14 @@
 from pydantic import BaseModel, Field
-from typing import List
+from typing import Any, List
 
 
 class SearchResult(BaseModel):
-    text: str
+    text: Any
     score: float
 
 
-class UploadResponse(BaseModel):
-    chunks_count: int
+class SearchResponse(BaseModel):
+    results: List[SearchResult]
 
 
 class SearchRequest(BaseModel):
@@ -40,11 +40,13 @@ class CollectionStats(BaseModel):
 class CollectionListResponse(BaseModel):
     collections: List[CollectionStats]
 
+
 class UploadRequest(BaseModel):
     collection_name: str = Field(
         default="default_collection",
         description="Name of the collection to upload to"
     )
+
 
 class UploadResponse(BaseModel):
     chunks_count: int
