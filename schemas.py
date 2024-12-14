@@ -22,7 +22,6 @@ class SearchResponse(BaseModel):
 
 
 class RAGRequest(BaseModel):
-    text: str
     collection_name: str = Field(default="default_collection")
     limit: int = Field(default=3, ge=1, le=10)
 
