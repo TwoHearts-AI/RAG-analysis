@@ -2,7 +2,7 @@ from qdrant_client import QdrantClient as SyncQdrantClient
 from qdrant_client.http import models
 from qdrant_client.models import ScoredPoint
 from loguru import logger
-from typing import Dict, List
+from typing import List
 import math
 import os
 
@@ -37,7 +37,7 @@ class QdrantClient:
     def save_chunks(
             self,
             collection_name: str,
-            chunks: List[Dict],
+            chunks: List[str],
             vectors: List[List[float]],
             filename: str,
 

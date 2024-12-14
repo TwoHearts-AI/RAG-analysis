@@ -11,11 +11,6 @@ class Settings(BaseSettings):
     QDRANT_HOST: str = Field("qdrant", description="Qdrant server host")
     QDRANT_PORT: int = Field(6333, description="Qdrant server port")
 
-    # Model Configuration
-    EMBEDDING_MODEL: str = Field(
-        "cointegrated/rubert-tiny",
-        description="Model name for embeddings generation"
-    )
     MISTRAL_API_KEY: str = Field(..., description="Mistral API key")
     MISTRAL_MODEL: str = Field(
         "mistral-large-latest",
