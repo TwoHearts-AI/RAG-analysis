@@ -4,13 +4,14 @@ from qdrant_client.models import ScoredPoint
 from loguru import logger
 from typing import List
 import math
-import os
+
+from config import CONFIG
 
 
 class QdrantClient:
     def __init__(self):
         self.client = SyncQdrantClient(
-            url=os.getenv('SERVER'),
+            url=CONFIG.QDRANT_URL,
             https=False,
             port=None,
         )
