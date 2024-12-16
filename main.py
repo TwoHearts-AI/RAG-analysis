@@ -111,6 +111,16 @@ async def rag_inference(request: RAGRequest):
 
         logger.info(f"Found {len(top_results)} unique relevant chunks")
 
+        reranker = Reranker("cross-encoder/ms-marco-MiniLM-L-6-v2")
+
+        
+
+        reranker_list = reranker.rerank(merged_prompt_text, relevant_context)
+
+        print("Релевантный контекст:", reranker_list)
+
+        answer = mistral.inference_llm(system_prompt, query, reranker_list)
+
         # Combine context and generate response
         context = "\n\n".join([res.payload.get("content", "") for res in top_results])
         logger.info("Generating LLM response")
