@@ -11,14 +11,14 @@ mistral = MistralClient()
 
 
 
-def rag_pipeline(rag_search_prompts, query, mistral, qdrant)->str:
+def rag_pipeline(rag_search_prompts, query, mistral, qdrant, collection_name)->str:
     merged_prompt_text = ''
     relevant_context = []
 
     for search_prompt in rag_search_prompts:
         vector = mistral.get_embeddings_batch([search_prompt])[0]
 
-        for i in qdrant.search_by_vector(collection_name="chat_chunks_baseline_default", query_vector=vector, limit=5):
+        for i in qdrant.search_by_vector(collection_name=collection_name, query_vector=vector, limit=5):
             relevant_context.append(i.payload['content']['content'])
         merged_prompt_text += search_prompt
 
