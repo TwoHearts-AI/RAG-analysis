@@ -1,13 +1,11 @@
-version: '3.8'
-
 services:
   qdrant:
     image: qdrant/qdrant
     ports:
       - "6333:6333"
       - "6334:6334"
-    volumes:
-      - /home/ubuntu/qdrant_storage:/qdrant/storage:z
+    # volumes:
+    #   - /home/ubuntu/qdrant_storage:/qdrant/storage:z
     
   api:
     build: .
@@ -15,7 +13,6 @@ services:
       - "8000:8000"
     volumes:
       - .:/app
-      - /home/ubuntu/BALTSAT:/app/data/BALTSAT
     depends_on:
       - qdrant
     environment:

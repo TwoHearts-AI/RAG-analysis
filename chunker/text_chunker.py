@@ -1,3 +1,4 @@
+from typing import List
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 
 class TextChunker:
@@ -30,7 +31,7 @@ class TextChunker:
             length_function=len
         )
 
-    def split_text(self, text: str) -> list:
+    def split_text(self, text: str) -> List[str]:
         """
         Разбивает входной текст на чанки.
 
@@ -41,3 +42,5 @@ class TextChunker:
             list: Список чанков текста.
         """
         return self.splitter.split_text(text)
+    
+chunker = TextChunker()

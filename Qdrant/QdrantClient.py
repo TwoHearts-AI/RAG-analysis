@@ -1,23 +1,21 @@
 from qdrant_client import QdrantClient as SyncQdrantClient
 from qdrant_client.http import models
-from loguru import logger
-from uuid import UUID
-import uuid
-from typing import List, Dict, Optional
-import math
 from qdrant_client.models import ScoredPoint
-import os
-from dotenv import load_dotenv
-load_dotenv()
+from loguru import logger
+from typing import List
+import math
+
+from config import CONFIG
+
 
 class QdrantClient:
     def __init__(self):
         self.client = SyncQdrantClient(
-            url=os.getenv('SERVER'),
+            url=CONFIG.QDRANT_URL,
             https=False,
             port=None,
         )
-        self.batch_size = 10  # Default batch size for uploads
+        self.batch_size = 20
 
     def ensure_collection_exists(
             self,
@@ -40,11 +38,10 @@ class QdrantClient:
     def save_chunks(
             self,
             collection_name: str,
-            chunks: List[Dict],
+            chunks: List[str],
             vectors: List[List[float]],
-            document_id: UUID,
-            chat_id: UUID,
             filename: str,
+
     ) -> None:
         self.ensure_collection_exists(
             collection_name=collection_name,
@@ -54,7 +51,7 @@ class QdrantClient:
         total_chunks = len(chunks)
         num_batches = math.ceil(total_chunks / self.batch_size)
 
-        for batch_num in range(num_batches)[281:]:
+        for batch_num in range(num_batches):
             start_idx = batch_num * self.batch_size
             end_idx = min((batch_num + 1) * self.batch_size, total_chunks)
 
@@ -64,21 +61,13 @@ class QdrantClient:
                     vectors[start_idx:end_idx]
             )):
                 metadata = {
-                    "document_id": str(document_id),
-                    "chat_id": str(chat_id),
                     "filename": filename,
-                    "chunk_index": start_idx + i
                 }
-
-                point_id = str(uuid.uuid4())
-
+                point_id = start_idx + i
                 batch_points.append(models.PointStruct(
                     id=point_id,
                     vector=vector,
-                    payload={
-                        "metadata": metadata,
-                        "content": chunk
-                    }
+                    payload={"content": chunk,  "metadata": metadata, }
                 ))
 
             self.client.upsert(
@@ -98,11 +87,12 @@ class QdrantClient:
             limit: int = 10
     ) -> List[ScoredPoint]:
         """Search vectors with basic filtering"""
-
         results = self.client.search(
             collection_name=collection_name,
             query_vector=query_vector,
             limit=limit
         )
-
         return results
+
+
+qdrant_client = QdrantClient()
