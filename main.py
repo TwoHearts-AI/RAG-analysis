@@ -83,11 +83,10 @@ async def rag_inference(request: RAGRequest):
         logger.info(f"Starting RAG inference for collection: {request.collection_name}")
 
         merged_prompt_text = ''
-        
+
         for search_prompt in vector_search_prompts:
             merged_prompt_text += search_prompt
-        
-        
+
         logger.info("Generating embeddings for search prompts")
         vector_search_embedding = mistral.get_embeddings_batch(vector_search_prompts)
 
@@ -111,19 +110,20 @@ async def rag_inference(request: RAGRequest):
                 seen_contents.add(content)
                 unique_results.append(res)
 
+        # Before reranking, extract text content from ScoredPoint objects
+        unique_contents = [res.payload.get("content", "") for res in unique_results]
+
         reranker = Reranker("cross-encoder/ms-marco-MiniLM-L-6-v2")
 
-        reranker_list = reranker.rerank(merged_prompt_text, unique_results)
-
+        reranker_list = reranker.rerank(merged_prompt_text, unique_contents)
 
         # Combine context and generate response
-        context = "\n\n".join([res.payload.get("content", "") for res in unique_results])
         logger.info("Generating LLM response")
 
         response = mistral.inference_llm(
             system_prompt=system_prompt,
             llm_query=llm_query_prompt,
-            context=context
+            context=reranker_list
         )
         logger.info("RAG inference completed")
 
