@@ -45,16 +45,13 @@ class MistralClient:
 
         return all_embeddings
 
-    def inference_llm(self, system_prompt: str, user_query: str, context: str = None) -> str:
+    def inference_llm(self, system_prompt: str, llm_query: str, context: str) -> str:
         logger.info("Starting LLM inference")
         messages = [
             {"role": "system", "content": system_prompt}
         ]
 
-        if context:
-            prompt = f"Context:\n{context}\n\nQuestion: {user_query}"
-        else:
-            prompt = user_query
+        prompt = f"Контекст из релевантной запросу переписки:\n{context}\n\nЗапрос на психологическую консультацию: {llm_query}"
 
         messages.append({"role": "user", "content": prompt})
 

@@ -7,6 +7,7 @@ from schemas import SearchResult, UploadResponse, SearchRequest, SearchResponse,
 from loguru import logger
 from prompts.vector_search import vector_search_prompts
 from qdrant_client.models import ScoredPoint
+from prompts.llm_inference import llm_query_prompt, system_prompt
 
 app = FastAPI()
 
@@ -114,9 +115,10 @@ async def rag_inference(request: RAGRequest):
         # Combine context and generate response
         context = "\n\n".join([res.payload.get("content", "") for res in top_results])
         logger.info("Generating LLM response")
+
         response = mistral.inference_llm(
-            system_prompt="You are a helpful assistant. Answer based on the provided context.",
-            user_query=request.text,
+            system_prompt=system_prompt,
+            llm_query=llm_query_prompt,
             context=context
         )
         logger.info("RAG inference completed")
