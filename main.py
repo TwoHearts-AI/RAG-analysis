@@ -129,8 +129,7 @@ async def rag_inference(request: RAGRequest):
 
         return RAGResponse(
             answer=response,
-            sources=[SearchResult(text=res.payload.get("content", ""), score=res.score)
-                     for res in unique_results]
+            context=reranker_list
         )
     except Exception as e:
         logger.error(f"Error during RAG inference: {str(e)}")
