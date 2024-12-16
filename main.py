@@ -11,7 +11,6 @@ from prompts.llm_inference import llm_query_prompt, system_prompt
 
 app = FastAPI()
 
-
 @app.post("/upload/{collection_name}", response_model=UploadResponse, status_code=status.HTTP_201_CREATED)
 async def upload_file(collection_name: str, file: UploadFile = File(...)):
     try:
