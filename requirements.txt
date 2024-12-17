@@ -13,5 +13,5 @@ langchain_core==0.3.15
 langchain==0.3.7
 fastapi==0.115.0
 mistralai==1.2.5
-sentence_transformers==3.3.1
 python-multipart==0.0.19
+sentence_transformers==3.3.1

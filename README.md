@@ -84,6 +84,8 @@ TwoHearts AI is an innovative application designed to analyze interpersonal rela
    ```bash
    git clone https://github.com/TwoHearts-AI/RAG-analysis
    cd RAG-analysis
+   docker compose up --build
+   ```
 
 	2.	Install dependencies:
 
@@ -110,3 +112,24 @@ Contact
 For questions, suggestions, or collaboration opportunities, please reach out:
 	- Email: contact@twohearts.ai
 	- Telegram: TwoHeartsAI
+
+
+Logic to build:
+
+   ```
+   txt
+
+   @langsmith
+   collection = post.(chunk, txt, collection_name)
+
+   @langsmith
+   docs = post_retrieve()
+
+   @langsmith
+   reranked_docs
+
+   @langsmith
+   llm_inference
+
+   html
+   ```

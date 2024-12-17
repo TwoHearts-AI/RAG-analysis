@@ -11,20 +11,26 @@ mistral = MistralClient()
 
 
 
-def rag_pipeline(rag_search_prompts, query, mistral, qdrant):
-    all_search = ''
+def rag_pipeline(rag_search_prompts, query, mistral, qdrant, collection_name)->str:
+    merged_prompt_text = ''
     relevant_context = []
 
-    for search in rag_search_prompts:
-        vector = mistral.get_embeddings_batch([search])[0]
+    for search_prompt in rag_search_prompts:
+        vector = mistral.get_embeddings_batch([search_prompt])[0]
 
-        for i in qdrant.search_by_vector(collection_name="chat_chunks_baseline_default", query_vector=vector, limit=5):
+        for i in qdrant.search_by_vector(collection_name=collection_name, query_vector=vector, limit=5):
             relevant_context.append(i.payload['content']['content'])
-        all_search += search
+        merged_prompt_text += search_prompt
 
     reranker = Reranker("cross-encoder/ms-marco-MiniLM-L-6-v2")
 
+<<<<<<< HEAD
     reranker_list = reranker.rerank(all_search, relevant_context)
+=======
+    print("Релевантный контекст:", relevant_context)
+
+    reranker_list = reranker.rerank(merged_prompt_text, relevant_context)
+>>>>>>> e48e3c2b4434262d89a261bf1062aacbe858e322
 
     answer = mistral.inference_llm(system_prompt, query, reranker_list)
 

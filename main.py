@@ -3,6 +3,7 @@ from fastapi import FastAPI, UploadFile, File, HTTPException, status
 from generators.MistralClient import mistral
 from qdrant.QdrantClient import qdrant_client
 from chunker.Text_chunker import chunker
+from reranker.Reranker import Reranker
 from schemas import SearchResult, UploadResponse, SearchRequest, SearchResponse, RAGRequest, RAGResponse, CollectionListResponse
 from loguru import logger
 from prompts.vector_search import vector_search_prompts
@@ -81,7 +82,11 @@ async def rag_inference(request: RAGRequest):
     try:
         logger.info(f"Starting RAG inference for collection: {request.collection_name}")
 
-        # Get embeddings for all search prompts
+        merged_prompt_text = ''
+
+        for search_prompt in vector_search_prompts:
+            merged_prompt_text += search_prompt
+
         logger.info("Generating embeddings for search prompts")
         vector_search_embedding = mistral.get_embeddings_batch(vector_search_prompts)
 
@@ -97,36 +102,34 @@ async def rag_inference(request: RAGRequest):
             vector_search_res.extend(results)
 
         # Remove duplicates and sort by score
-        unique_results = {}
-        for res in vector_search_res:
+        unique_results = []
+        seen_contents = set()
+        for res in sorted(vector_search_res, key=lambda x: x.score, reverse=True):
             content = res.payload.get("content", "")
-            if content not in unique_results or res.score > unique_results[content].score:
-                unique_results[content] = res
+            if content not in seen_contents:
+                seen_contents.add(content)
+                unique_results.append(res)
 
-        # Take top N results
-        top_results = sorted(
-            unique_results.values(),
-            key=lambda x: x.score,
-            reverse=True
-        )[:request.limit]
+        # Before reranking, extract text content from ScoredPoint objects
+        unique_contents = [res.payload.get("content", "") for res in unique_results]
 
-        logger.info(f"Found {len(top_results)} unique relevant chunks")
+        reranker = Reranker("cross-encoder/ms-marco-MiniLM-L-6-v2")
+
+        reranker_list = reranker.rerank(merged_prompt_text, unique_contents)
 
         # Combine context and generate response
-        context = "\n\n".join([res.payload.get("content", "") for res in top_results])
         logger.info("Generating LLM response")
 
         response = mistral.inference_llm(
             system_prompt=system_prompt,
             llm_query=llm_query_prompt,
-            context=context
+            context=reranker_list
         )
         logger.info("RAG inference completed")
 
         return RAGResponse(
             answer=response,
-            sources=[SearchResult(text=res.payload.get("content", ""), score=res.score)
-                     for res in top_results]
+            context=reranker_list
         )
     except Exception as e:
         logger.error(f"Error during RAG inference: {str(e)}")

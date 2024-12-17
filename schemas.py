@@ -28,7 +28,7 @@ class RAGRequest(BaseModel):
 
 class RAGResponse(BaseModel):
     answer: str
-    sources: List[SearchResult]
+    context: str
 
 
 class CollectionStats(BaseModel):
