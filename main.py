@@ -9,11 +9,13 @@ from loguru import logger
 from prompts.vector_search import vector_search_prompts
 from qdrant_client.models import ScoredPoint
 from prompts.llm_inference import llm_query_prompt, system_prompt
+from langsmith import traceable
 
 app = FastAPI()
 
 
 @app.post("/upload/{collection_name}", response_model=UploadResponse, status_code=status.HTTP_201_CREATED)
+@traceable()
 async def upload_file(collection_name: str, file: UploadFile = File(...)):
     try:
         logger.info(f"Starting file upload to collection: {collection_name}")
@@ -54,6 +56,7 @@ async def upload_file(collection_name: str, file: UploadFile = File(...)):
 
 
 @app.post("/search", response_model=SearchResponse)
+@traceable()
 async def search_documents(request: SearchRequest):
     try:
         logger.info(f"Searching in collection: {request.collection_name}")
@@ -78,6 +81,7 @@ async def search_documents(request: SearchRequest):
 
 
 @app.post("/rag-inference", response_model=RAGResponse)
+@traceable()
 async def rag_inference(request: RAGRequest):
     try:
         logger.info(f"Starting RAG inference for collection: {request.collection_name}")

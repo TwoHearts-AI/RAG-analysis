@@ -3,6 +3,7 @@ from typing import List
 from config import CONFIG
 import time
 from loguru import logger
+from langsmith import traceable
 
 
 class MistralClient:
@@ -12,6 +13,7 @@ class MistralClient:
         self.embed_model = "mistral-embed"
         self.delay = 2
 
+    @traceable()
     def _get_embeddings_single(self, batch: List[str]) -> List[List[float]]:
         """Single batch request with error handling"""
         try:
@@ -25,6 +27,7 @@ class MistralClient:
             logger.error(f"Batch size: {len(batch)}")
             raise
 
+    @traceable()
     def get_embeddings_batch(self, texts: List[str], batch_size: int = 23) -> List[List[float]]:
         """Process texts in batches with rate limiting"""
         total_batches = (len(texts) + batch_size - 1) // batch_size
@@ -45,6 +48,7 @@ class MistralClient:
 
         return all_embeddings
 
+    @traceable()
     def inference_llm(self, system_prompt: str, llm_query: str, context: str) -> str:
         logger.info("Starting LLM inference")
         messages = [

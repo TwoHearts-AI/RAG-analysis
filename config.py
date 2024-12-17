@@ -16,6 +16,12 @@ class Settings(BaseSettings):
         description="Mistral model name to use"
     )
 
+    # Setting up langchain tracing
+    LANGCHAIN_API_KEY: str = Field(..., description="Langchain API key")
+    LANGCHAIN_TRACING_V2:bool = Field(True)
+    LANGCHAIN_ENDPOINT: str = Field(..., description="Langchain API endpoint")
+    LANGCHAIN_PROJECT: str = Field(..., description="Project name")
+
     class Config:
         env_file = ".env"
 
