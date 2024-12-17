@@ -3,6 +3,7 @@ from qdrant_client.http import models
 from qdrant_client.models import ScoredPoint
 from loguru import logger
 from typing import List
+from langsmith import traceable
 import math
 
 from config import CONFIG
@@ -35,6 +36,7 @@ class QdrantClient:
             )
             logger.info(f"Created collection: {collection_name}")
 
+    @traceable
     def save_chunks(
             self,
             collection_name: str,
@@ -80,6 +82,7 @@ class QdrantClient:
                 f"({len(batch_points)} chunks) in collection {collection_name}"
             )
 
+    @traceable
     def search_by_vector(
             self,
             collection_name: str,
