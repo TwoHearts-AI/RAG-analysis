@@ -24,11 +24,7 @@ def rag_pipeline(rag_search_prompts, query, mistral, qdrant):
 
     reranker = Reranker("cross-encoder/ms-marco-MiniLM-L-6-v2")
 
-    print("Релевантный контекст:", relevant_context)
-
     reranker_list = reranker.rerank(all_search, relevant_context)
-
-    print("Релевантный контекст:", reranker_list)
 
     answer = mistral.inference_llm(system_prompt, query, reranker_list)
 

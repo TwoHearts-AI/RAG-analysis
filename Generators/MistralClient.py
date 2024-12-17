@@ -52,7 +52,7 @@ class MistralClient:
         ]
 
         prompt = f"Контекст из релевантной запросу переписки:\n{context}\n\nЗапрос на психологическую консультацию: {llm_query}"
-
+        print(f'System_promt: {system_prompt}, \n, {prompt}' )
         messages.append({"role": "user", "content": prompt})
 
         try:
