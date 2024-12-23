@@ -24,6 +24,9 @@ class Settings(BaseSettings):
     LANGCHAIN_ENDPOINT: str = Field(..., description="Langchain API endpoint")
     LANGCHAIN_PROJECT: str = Field(..., description="Project name")
 
+    OPENAI_API_KEY: str = Field(..., description="Opeanai")
+    OPENAI_BASE_URL: str = Field(..., description="Opeanai")
+
     class Config:
         env_file = ".env"
 
