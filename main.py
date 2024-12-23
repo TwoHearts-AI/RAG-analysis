@@ -1,7 +1,7 @@
 from typing import List
 from fastapi import FastAPI, UploadFile, File, HTTPException, status
-from generators.MistralClient import mistral
-from qdrant.QdrantClient import qdrant_client
+from Generators.MistralClient import mistral
+from Qdrant.QdrantClient import qdrant_client
 from chunker.Text_chunker import chunker
 from reranker.Reranker import Reranker
 from schemas import SearchResult, UploadResponse, SearchRequest, SearchResponse, RAGRequest, RAGResponse, CollectionListResponse
@@ -82,10 +82,6 @@ async def rag_inference(request: RAGRequest):
     try:
         logger.info(f"Starting RAG inference for collection: {request.collection_name}")
 
-        merged_prompt_text = ''
-
-        for search_prompt in vector_search_prompts:
-            merged_prompt_text += search_prompt
 
         logger.info("Generating embeddings for search prompts")
         vector_search_embedding = mistral.get_embeddings_batch(vector_search_prompts)
@@ -99,23 +95,35 @@ async def rag_inference(request: RAGRequest):
                 query_vector=embedding,
                 limit=request.limit
             )
-            vector_search_res.extend(results)
+
+            vector_search_res.append(results)
 
         # Remove duplicates and sort by score
-        unique_results = []
-        seen_contents = set()
-        for res in sorted(vector_search_res, key=lambda x: x.score, reverse=True):
-            content = res.payload.get("content", "")
-            if content not in seen_contents:
-                seen_contents.add(content)
-                unique_results.append(res)
+        all_data = []
 
-        # Before reranking, extract text content from ScoredPoint objects
-        unique_contents = [res.payload.get("content", "") for res in unique_results]
+        for vec in vector_search_res:
+            unique_results = []
+            seen_contents = set()
 
+            for res in vec:
+                content = res.payload['content']['content']
+
+                if content not in seen_contents:
+                    seen_contents.add(content)
+                    unique_results.append(res)
+            all_data.append(unique_results)
+
+
+
+        all_data_clear = []
+        for item in all_data:
+            all_data_clear.append([message.payload['content']['content'] for message in item])
+
+
+        logger.info(all_data_clear)
         reranker = Reranker("cross-encoder/ms-marco-MiniLM-L-6-v2")
 
-        reranker_list = reranker.rerank(merged_prompt_text, unique_contents)
+        reranker_list = reranker.rerank(vector_search_prompts, all_data_clear)
 
         # Combine context and generate response
         logger.info("Generating LLM response")
