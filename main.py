@@ -1,7 +1,7 @@
 from typing import List
 from fastapi import FastAPI, UploadFile, File, HTTPException, status
-from Generators.MistralClient import mistral
-from Qdrant.QdrantClient import qdrant_client
+from generators.MistralClient import mistral
+from qdrant.QdrantClient import qdrant_client
 from chunker.Text_chunker import chunker
 from reranker.Reranker import Reranker
 from schemas import SearchResult, UploadResponse, SearchRequest, SearchResponse, RAGRequest, RAGResponse, CollectionListResponse
