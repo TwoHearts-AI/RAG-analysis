@@ -1,4 +1,5 @@
 from typing import Dict
+from dotenv import load_dotenv
 from pydantic import BaseModel, Field 
 from loguru import logger
 from langsmith import traceable
@@ -6,7 +7,11 @@ from langchain_community.chat_models import ChatOpenAI
 from langchain.output_parsers import PydanticOutputParser
 from langchain.prompts import ChatPromptTemplate
 import httpx
+import json
+import os
+from datetime import datetime
 
+load_dotenv()
 # Evaluation Models
 class EvaluationGrade(BaseModel):
     consultation_score: int = Field(..., description="Score for addressing psychological consultation")
@@ -36,7 +41,7 @@ llm_query_prompt = "Оцени конфликтность партнеров п�
 class RelationshipResponseEvaluator:
     def __init__(self):
         self.parser = PydanticOutputParser(pydantic_object=EvaluationGrade)
-        self.eval_model = ChatOpenAI(model="gpt-4", temperature=0)
+        self.eval_model = ChatOpenAI(model="o1-mini", temperature=1)
         
     async def evaluate_response(self, rag_response: RAGResponse) -> EvaluationMetrics:
         evaluation_template = """Вы оцениваете ответ системы психологического консультирования.
@@ -103,17 +108,55 @@ async def run_evaluation_pipeline(collection_name: str) -> Dict:
         logger.error(f"Evaluation pipeline failed: {str(e)}")
         raise
 
+async def save_eval_results(results: Dict, collection_name: str):
+    """Save evaluation results to JSON file"""
+    # Create eval_results directory if it doesn't exist
+    os.makedirs("eval_results", exist_ok=True)
+    
+    # Generate filename with timestamp
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"eval_results/eval_{collection_name}_{timestamp}.json"
+    
+    # Prepare results for JSON serialization
+    json_results = {
+        "collection_name": collection_name,
+        "timestamp": timestamp,
+        "metrics": {
+            "relevance_score": results["metrics"].relevance_score,
+            "context_quality": results["metrics"].context_quality,
+            "conflict_assessment_score": results["metrics"].conflict_assessment_score,
+            "explanation": results["metrics"].explanation
+        },
+        "rag_response": {
+            "answer": results["rag_response"].answer,
+            "context": results["rag_response"].context
+        }
+    }
+    
+    # Save to file
+    with open(filename, 'w', encoding='utf-8') as f:
+        json.dump(json_results, f, ensure_ascii=False, indent=2)
+    
+    logger.info(f"Evaluation results saved to {filename}")
+    return filename
 
 if __name__ == "__main__":
     import asyncio
     
     async def main():
-        results = await run_evaluation_pipeline("chat_chunks_baseline_default")
+        collection_name = "chat_chunks_baseline_default"
+        results = await run_evaluation_pipeline(collection_name)
+        
+        # Save results
+        saved_file = await save_eval_results(results, collection_name)
+        
+        # Print summary
         print("\nEvaluation Results:")
         print(f"Relevance Score: {results['metrics'].relevance_score}")
         print(f"Context Quality: {results['metrics'].context_quality}")
         print(f"Conflict Assessment: {results['metrics'].conflict_assessment_score}")
         print(f"\nExplanation: {results['metrics'].explanation}")
         print(f"\nRAG Response: {results['rag_response'].answer}")
+        print(f"\nResults saved to: {saved_file}")
         
     asyncio.run(main())
