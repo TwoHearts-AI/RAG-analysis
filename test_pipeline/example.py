@@ -31,7 +31,7 @@ def rag_pipeline(vector_search_prompts, query, mistral, qdrant, collection_name)
     reranker_list = reranker.rerank(vector_search_prompts, relevant_context)
 
     print("Релевантный контекст:", reranker_list)
-    return 0
+
     answer = mistral.inference_llm(system_prompt, query, reranker_list)
 
     return answer
@@ -42,12 +42,3 @@ query = llm_query_prompt
 response = rag_pipeline(rag_search_prompts, query, mistral, qdrant, "chat_chunks_baseline_default")
 
 print(response)
-# limit = 10
-# cnt_query = len(results) / 10
-# candidates = []
-# for i in range(cnt_query):
-#     candidates.append([
-#         (query, result)  # Преобразуем в строку
-#         for result in results[10 * i:10 + 10 * i]
-#     ])
-# print(candidates)
