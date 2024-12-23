@@ -15,7 +15,11 @@ services:
       - .:/app
     depends_on:
       - qdrant
-    environment:
-      - QDRANT_HOST=qdrant
-      - QDRANT_PORT=6333
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+  telegram-bot:
+    build: ./telegram
+    depends_on:
+      - api
+    volumes:
+      - .:/app

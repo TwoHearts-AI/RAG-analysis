@@ -20,13 +20,13 @@ class Settings(BaseSettings):
 
     # Setting up langchain tracing
     LANGCHAIN_API_KEY: str = Field(..., description="Langchain API key")
-    LANGCHAIN_TRACING_V2:bool = Field(True)
+    LANGCHAIN_TRACING_V2: bool = Field(True)
     LANGCHAIN_ENDPOINT: str = Field(..., description="Langchain API endpoint")
     LANGCHAIN_PROJECT: str = Field(..., description="Project name")
 
     OPENAI_API_KEY: str = Field(..., description="Opeanai")
     OPENAI_BASE_URL: str = Field(..., description="Opeanai")
-
+    TELEGRAM_TOKEN: str = Field(..., description="Token for tg bot")
     class Config:
         env_file = ".env"
 

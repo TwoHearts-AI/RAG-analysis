@@ -153,13 +153,20 @@ async def list_collections():
     try:
         logger.info("Listing collections")
         collections = qdrant_client.client.get_collections()
-        stats = [
-            {
+        
+        stats = []
+        for collection in collections.collections:
+            try:
+                collection_info = qdrant_client.client.get_collection(collection.name)
+                vectors_count = collection_info.points_count if collection_info else 0
+            except Exception:
+                vectors_count = 0
+                
+            stats.append({
                 "name": collection.name,
-                "vectors_count": qdrant_client.client.get_collection(collection.name).vectors_count
-            }
-            for collection in collections.collections
-        ]
+                "vectors_count": vectors_count or 0  # Ensure we always have an integer
+            })
+            
         logger.info(f"Found {len(stats)} collections")
         return CollectionListResponse(collections=stats)
     except Exception as e:
