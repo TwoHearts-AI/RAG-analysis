@@ -11,38 +11,37 @@ class Reranker:
         self.model_name = model_name
         self.reranker = CrossEncoder(model_name)
 
-    def rerank(self, query: str, results: list) -> List[str]:
+    def rerank(self, query: str, results: list) -> str:
         """
         Реранкинг списка кандидатов.
 
         :param query: Запрос пользователя.
         :param results: Список результатов из Qdrant (list of dict),
                         где каждый элемент должен содержать ключ 'content'.
-        :return: Отсортированный список с оценками релевантности.
+        :return: str
         """
+        merge_best = ''
+        for i in range(len(results)):
+            candidates = [
+                (query[i], result)  # Преобразуем в строку
+                for result in results[i]
+            ]
 
-        candidates = [
-            (query, result)  # Преобразуем в строку
-            for result in results
-        ]
+            # Инициализация реранкера
+            reranker = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")  # Пример модели для реранка
 
-        # Инициализация реранкера
-        reranker = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")  # Пример модели для реранка
+            # Оценка релевантности с помощью реранкера
+            scores = reranker.predict(candidates)
 
-        # Оценка релевантности с помощью реранкера
-        scores = reranker.predict(candidates)
+            # Объединение результатов с оценками
+            scored_results = [
+                {"content": result, "score": score}
+                for result, score in zip(results[i], scores)
+            ]
 
-        # Объединение результатов с оценками
-        scored_results = [
-            {"content": result, "score": score}
-            for result, score in zip(results, scores)
-        ]
+            # Сортировка по убыванию релевантности
+            scored_results = sorted(scored_results, key=lambda x: x['score'], reverse=True)
 
-        # Сортировка по убыванию релевантности
-        scored_results = sorted(scored_results, key=lambda x: x['score'], reverse=True)
+            merge_best += scored_results[0]['content'] + '\n-----------------------------------------------\n'
 
-
-        return_sorted_chat = '\n-----------------------------------------------\n'.join(
-            result['content'] for result in scored_results)
-
-        return return_sorted_chat
+        return merge_best

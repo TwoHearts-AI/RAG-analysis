@@ -10,7 +10,9 @@ class Settings(BaseSettings):
     # Qdrant Configuration
     QDRANT_URL: str = Field("qdrant:6333", description="Qdrant server")
 
+
     MISTRAL_API_KEY: str = Field(..., description="Mistral API key")
+
     MISTRAL_MODEL: str = Field(
         "mistral-large-latest",
         description="Mistral model name to use"
