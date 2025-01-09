@@ -2,7 +2,7 @@ from typing import List
 from fastapi import FastAPI, UploadFile, File, HTTPException, status
 from generators.MistralClient import mistral
 from qdrant.QdrantClient import qdrant_client
-from chunker.Text_chunker import chunker
+from chunker.Text_chunker import get_chunker
 from reranker.Reranker import Reranker
 from schemas import SearchResult, UploadResponse, SearchRequest, SearchResponse, RAGRequest, RAGResponse, CollectionListResponse
 from loguru import logger
@@ -16,14 +16,24 @@ app = FastAPI()
 
 @app.post("/upload/{collection_name}", response_model=UploadResponse, status_code=status.HTTP_201_CREATED)
 @traceable()
-async def upload_file(collection_name: str, file: UploadFile = File(...)):
+async def upload_file(collection_name: str, file: UploadFile = File(...), use_session_chunker: bool = False):
     try:
         logger.info(f"Starting file upload to collection: {collection_name}")
         content = await file.read()
         text = content.decode()
 
+        # Получаем нужный чанкер
+        logger.info("Selecting appropriate chunker")
+        chunker = get_chunker(use_session_chunker)
+
+        # Чанкинг текста
         logger.info("Splitting text into chunks")
-        chunks = chunker.split_text(text)
+        if use_session_chunker:
+            messages = chunker.parse_messages_from_file(file.filename)
+            sessions = chunker.chunk(messages)
+            chunks = ["\n".join(f"[{msg.date}] {msg.author}: {msg.text}" for msg in session) for session in sessions]
+        else:
+            chunks = chunker.split_text(text)
         logger.info(f"Generated {len(chunks)} chunks")
 
         logger.info("Generating embeddings")
