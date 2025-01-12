@@ -86,7 +86,6 @@ async def rag_inference(request: RAGRequest):
     try:
         logger.info(f"Starting RAG inference for collection: {request.collection_name}")
 
-
         logger.info("Generating embeddings for search prompts")
         vector_search_embedding = mistral.get_embeddings_batch(vector_search_prompts)
 
@@ -99,39 +98,48 @@ async def rag_inference(request: RAGRequest):
                 query_vector=embedding,
                 limit=request.limit
             )
-
             vector_search_res.append(results)
 
         # Remove duplicates and sort by score
         all_data = []
 
-        for vec in vector_search_res:
+        for idx, vec in enumerate(vector_search_res):
+            logger.info(f"Processing vector result #{idx}")
             unique_results = []
             seen_contents = set()
 
-            for res in vec:
-                content = res.payload['content']['content']
-
-                if content not in seen_contents:
-                    seen_contents.add(content)
-                    unique_results.append(res)
+            for res_idx, res in enumerate(vec):
+                try:
+                    # Обращаемся напрямую к content, так как это строка
+                    content = res.payload['content']
+                    
+                    if content not in seen_contents:
+                        seen_contents.add(content)
+                        unique_results.append(res)
+                except Exception as e:
+                    logger.error(f"Error processing result: {str(e)}")
+                    continue
+                    
             all_data.append(unique_results)
 
-
-
+        # Преобразование результатов
         all_data_clear = []
         for item in all_data:
-            all_data_clear.append([message.payload['content']['content'] for message in item])
+            try:
+                # Берем напрямую content из payload
+                contents = [message.payload['content'] for message in item]
+                all_data_clear.append(contents)
+            except Exception as e:
+                logger.error(f"Error extracting contents: {str(e)}")
+                all_data_clear.append([])
 
-
-        logger.info(all_data_clear)
+        logger.info(f"Processed data: {all_data_clear}")
         reranker = Reranker("cross-encoder/ms-marco-MiniLM-L-6-v2")
 
         reranker_list = reranker.rerank(vector_search_prompts, all_data_clear)
 
         # Combine context and generate response
         logger.info("Generating LLM response")
-
         response = mistral.inference_llm(
             system_prompt=system_prompt,
             llm_query=llm_query_prompt,
@@ -146,8 +154,8 @@ async def rag_inference(request: RAGRequest):
     except Exception as e:
         logger.error(f"Error during RAG inference: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
-
-
+    
+    
 @app.get("/collections", response_model=CollectionListResponse)
 async def list_collections():
     try:
