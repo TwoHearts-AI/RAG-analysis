@@ -1,3 +1,4 @@
+from loguru import logger
 from aiogram import Bot, F, Router
 from aiogram.types import Message
 from aiogram.filters import CommandStart
@@ -6,6 +7,7 @@ from aiogram.fsm.context import FSMContext
 import keyboards as kb
 import httpx
 from aiogram.exceptions import TelegramBadRequest
+
 router = Router()
 
 class UploadStates(StatesGroup):
@@ -96,7 +98,8 @@ async def process_collection_choice(message: Message, state: FSMContext):
 async def process_search(message: Message, state: FSMContext):
     data = await state.get_data()
     collection_name = data.get('selected_collection', 'default_collection')
-    
+    logger.info(collection_name)
+    logger.info(message.text)
     async with httpx.AsyncClient(timeout=250) as client:
         response = await make_api_call(
             client,
@@ -105,7 +108,7 @@ async def process_search(message: Message, state: FSMContext):
             json={
                 "text": message.text,
                 "collection_name": collection_name,
-                "limit": 3  # Limit to 3 results
+                "limit": 6  # Limit to 3 results
             }
         )
         if isinstance(response, str):
