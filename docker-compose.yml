@@ -1,6 +1,7 @@
 services:
   qdrant:
     image: qdrant/qdrant
+    restart: unless-stopped
     ports:
       - "6333:6333"
       - "6334:6334"
@@ -9,6 +10,7 @@ services:
     
   api:
     build: .
+    restart: unless-stopped
     ports:
       - "8000:8000"
     volumes:
@@ -19,6 +21,7 @@ services:
 
   telegram-bot:
     build: ./telegram
+    restart: unless-stopped
     depends_on:
       - api
     volumes:

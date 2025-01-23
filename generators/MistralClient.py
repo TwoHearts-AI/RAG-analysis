@@ -28,7 +28,7 @@ class MistralClient:
             raise
 
     @traceable()
-    def get_embeddings_batch(self, texts: List[str], batch_size: int = 23) -> List[List[float]]:
+    def get_embeddings_batch(self, texts: List[str], batch_size: int = 20) -> List[List[float]]:
         """Process texts in batches with rate limiting"""
         total_batches = (len(texts) + batch_size - 1) // batch_size
         logger.info(f"Processing {len(texts)} texts in {total_batches} batches")
