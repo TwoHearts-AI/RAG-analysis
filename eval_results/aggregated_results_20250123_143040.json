@@ -1,0 +1,15 @@
+{
+  "inference_model": "mistral-large-latest",
+  "judge_model": "o1-mini",
+  "average_relevance": 0.8,
+  "average_context_quality": 0.7,
+  "average_conflict_assessment": 0.8,
+  "overall_average": 0.7666666666666667,
+  "collections_analyzed": [
+    "chat_2",
+    "chat_3",
+    "chat_1",
+    "chat_filtered_final"
+  ],
+  "timestamp": "20250123_143040"
+}
